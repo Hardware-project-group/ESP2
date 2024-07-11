@@ -25,7 +25,9 @@ String postdata = "tag=";
 int ItemsScanned = 0;
 const int buttonPin = 26;
 int buttonState = 0;
+int doorState = 0;
 String postdataIP;
+const int doorsensorPin = 32;
 
 #define SS_PIN 5
 #define RST_PIN 14
@@ -40,7 +42,7 @@ void handleFingerprint() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
   server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
-  http.begin("http://10.13.127.54/TestEsp/insideFingerEnroll.php");
+  http.begin("http://192.168.137.1:5000/update-inside-finger");
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
   if (server.hasArg("fingerID")) {
@@ -96,7 +98,7 @@ void handleRoot() {
 }
 
 void tagHandler(String tagId){
-    http.begin("http://10.13.127.54/TestEsp/handleTag.php");
+    http.begin("http://192.168.137.1:5000/process-tag");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     postdata = postdata + tagId;
     Serial.println(tagId);
@@ -132,6 +134,12 @@ void tagHandler(String tagId){
     }else{
       lcd.clear();
       lcd.print(message);
+      delay(1000);
+      lcd.clear();
+      lcd.setCursor(2, 0);
+      lcd.print("Scan items:");
+      lcd.setCursor(0, 1);
+      lcd.print("Scanned items: " + String(ItemsScanned));
     }
     http.end();
     postdata = "tag=";
@@ -140,27 +148,27 @@ void tagHandler(String tagId){
 void handleRFID() {
   if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
     return;
+  }else{
+    content = "";
+    for (byte i = 0; i < mfrc522.uid.size; i++) {
+      content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " "));
+      content.concat(String(mfrc522.uid.uidByte[i], HEX));
+    }
+
+    content.toUpperCase();
+    Serial.println(content);
+    digitalWrite(13, HIGH);
+    digitalWrite(12, HIGH);
+    delay(100);
+    digitalWrite(13, LOW);
+    digitalWrite(12, LOW);
+
+    tagHandler(content);
   }
-
-  content = "";
-  for (byte i = 0; i < mfrc522.uid.size; i++) {
-    content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " "));
-    content.concat(String(mfrc522.uid.uidByte[i], HEX));
-  }
-
-  content.toUpperCase();
-  Serial.println(content);
-  digitalWrite(13, HIGH);
-  digitalWrite(12, HIGH);
-  delay(100);
-  digitalWrite(13, LOW);
-  digitalWrite(12, LOW);
-
-  tagHandler(content);
 }
 
 void sendIp(String ip){
-    http.begin("http://10.13.127.54/TestEsp/SendIp.php");
+    http.begin("http://192.168.137.1:5000/SendIp");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     postdataIP = "Board=ESP2&ip=" + ip;
     int httpResponseCode = http.POST(postdataIP);
@@ -176,6 +184,7 @@ void setup() {
   pinMode(13, OUTPUT);
   pinMode(12, OUTPUT);
   pinMode(buttonPin, INPUT);
+  pinMode(doorsensorPin, INPUT_PULLUP);
 
   while (!Serial) {
     ; // Wait for the serial port to connect
@@ -226,12 +235,19 @@ void loop() {
   }
   server.handleClient();
   handleRFID();
+  doorState  = digitalRead(doorsensorPin);
+  //Serial.println(doorState);
   buttonState = digitalRead(buttonPin);
   // Serial.println(buttonState);
   if(buttonState == HIGH){
     while (getFingerprintID() == 2)
       ;
     delay(1000);
+    lcd.clear();
+    lcd.setCursor(2, 0);
+    lcd.print("Scan items:");
+    lcd.setCursor(0, 1);
+    lcd.print("Scanned items: " + String(ItemsScanned));
   }
   
 }

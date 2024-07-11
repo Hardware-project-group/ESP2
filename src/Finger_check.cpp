@@ -14,7 +14,7 @@ int httpCode;
 
 void getIpOfEsp1(){
     HTTPClient http;
-    http.begin("http://10.13.127.54/TestEsp/GetIp.php");
+    http.begin("http://192.168.137.1:5000/get-ip");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     String postData= "id=ESP1";
     int httpResponseCode = http.POST(postData);
@@ -50,12 +50,10 @@ void getIpOfEsp1(){
 
 void sendData(int id){
     HTTPClient http;
-    String serverAddress2 = "http://10.13.127.54/TestEsp/hangleExit.php";
+    String serverAddress2 = "http://192.168.137.1:5000/update-warehouse-access";
     http.begin(serverAddress2);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    String postdata = "id=" + String(id);
-    Serial.println(postdata);
-    int httpcode = http.POST(postdata);
+    int httpcode = http.POST( "id=" + String(id));
     String payload = http.getString();
     Serial.print(payload);
     http.end();
@@ -178,13 +176,14 @@ uint8_t getFingerprintID() {
     lcd.clear();
     lcd.print("Door opening");
     sendData(finger.fingerID);
+    ItemsScanned = 0;
     delay(2000);
     Serial.println(" with confidence of ");
     Serial.println(finger.confidence);
     return finger.fingerID;
 }
 
-// returns -1 if failed, otherwise returns ID #
+
 int getFingerprintIDez() {
     uint8_t p = finger.getImage();
     if (p != FINGERPRINT_OK) return -1;
@@ -204,6 +203,7 @@ int getFingerprintIDez() {
     lcd.clear();
     lcd.print("Door Opening");
     sendData(finger.fingerID);
+    ItemsScanned = 0;
     delay(2000);
     Serial.println(" with confidence of ");
     Serial.print(finger.confidence);

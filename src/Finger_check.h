@@ -8,4 +8,6 @@ extern Adafruit_Fingerprint finger;
 uint8_t getFingerprintID();
 void getIpOfEsp1();
 
+extern int ItemsScanned;
+
 #endif 
